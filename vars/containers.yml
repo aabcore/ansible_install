@@ -1,0 +1,11 @@
+---
+applications:
+  - fullName: aabcore/bankerschoice.api
+    tag: 0.4.0
+    shortName: bankerschoice
+  - fullName: aabcore/mailcat.api
+    tag: 0.1.2
+    shortName: mailcat
+  - fullName: aabcore/personablepeople.api
+    tag: 0.1.0
+    shortName: personablepeople

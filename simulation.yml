@@ -1,0 +1,114 @@
+[
+  {
+    "hosts": "all",
+    "become": true,
+    "vars_files": ["vars/containers.yml"],
+    "tasks":
+      [
+        {
+          "name": "Install aptitude using apt",
+          "apt": "name=aptitude state=latest update_cache=yes force_apt_get=yes",
+        },
+        {
+          "name": "Install required system packages",
+          "apt":
+            {
+              "name": "{{ item }}",
+              "state": "latest",
+              "update_cache": "yes",
+              "cache_valid_time": 60,
+            },
+          "loop":
+            [
+              "apt-transport-https",
+              "ca-certificates",
+              "curl",
+              "software-properties-common",
+              "gnupg-agent",
+              "python3-pip",
+              "virtualenv",
+              "python3-setuptools",
+            ],
+        },
+        {
+          "name": "Add Docker GPG apt Key",
+          "apt_key":
+            {
+              "url": "https://download.docker.com/linux/ubuntu/gpg",
+              "state": "present",
+            },
+        },
+        {
+          "name": "Add Docker Repository",
+          "apt_repository":
+            {
+              "repo": "deb https://download.docker.com/linux/ubuntu focal stable",
+              "state": "present",
+            },
+        },
+        {
+          "name": "Install required docker packages",
+          "apt":
+            {
+              "name": "{{ item }}",
+              "state": "latest",
+              "update_cache": "yes",
+              "cache_valid_time": 60,
+            },
+          "loop": ["docker-ce", "docker-ce-cli", "containerd.io"],
+        },
+        {
+          "name": "Update apt and install docker-ce",
+          "apt": "update_cache=yes name=docker-ce state=latest",
+        },
+        {
+          "name": "Install Docker Module for Python",
+          "pip": { "name": "docker" },
+        },
+        {
+          "name": "DockerEngine Managed by systemd",
+          "systemd": { "name": "docker", "enabled": "yes", "state": "started" },
+        },
+        {
+          "name": "Pull Application Docker images",
+          "docker_image":
+            {
+              "name": "{{ item.fullName }}",
+              "tag": "{{ item.tag }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "loop": "{{ applications }}",
+        },
+        {
+          "name": "Add App to systemd",
+          "template":
+            {
+              "src": "./application_systemd_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{item.shortName}}.service",
+            },
+          "loop": "{{ applications }}",
+        },
+        {
+          "name": "Apps Enabled by systemd",
+          "systemd":
+            {
+              "name": "docker.{{item.shortName}}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "loop": "{{ applications }}",
+        },
+      ],
+  },
+]
+# {
+#   "name": "Create default containers",
+#   "docker_container": {
+#     "name": "{{ default_container_name }}{{ item }}",
+#     "image": "{{ default_container_image }}",
+#     "command": "{{ default_container_command }}",
+#     "state": "present"
+#   },
+#   "with_sequence": "count={{ create_containers }}"
+# }
