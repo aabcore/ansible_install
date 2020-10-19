@@ -2,6 +2,8 @@
 Description={{ item.shortName }} Container
 After=docker.service
 Requires=docker.service
+After=docker.nginx.service
+Requires=docker.nginx.service
 
 [Service]
 TimeoutStartSec=0
@@ -9,7 +11,7 @@ Restart=always
 ExecStartPre=-/usr/bin/docker stop %n
 ExecStartPre=-/usr/bin/docker rm %n
 ExecStartPre=/usr/bin/docker pull {{ item.fullName}}:{{ item.tag }}
-ExecStart=/usr/bin/docker run --rm --name %n {{ item.fullName}}:{{ item.tag }}
+ExecStart=/usr/bin/docker run --rm --name %n -p {{item.port}}:80 {{ item.fullName}}:{{ item.tag }}
 
 [Install]
 WantedBy=multi-user.target

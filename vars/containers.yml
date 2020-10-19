@@ -3,9 +3,14 @@ applications:
   - fullName: aabcore/bankerschoice.api
     tag: 0.4.0
     shortName: bankerschoice
+    port: 49494
   - fullName: aabcore/mailcat.api
     tag: 0.1.2
     shortName: mailcat
+    port: 49495
   - fullName: aabcore/personablepeople.api
     tag: 0.1.0
     shortName: personablepeople
+    port: 49496
+nginx:
+  tag: 1.19
