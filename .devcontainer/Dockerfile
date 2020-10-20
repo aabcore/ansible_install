@@ -45,6 +45,8 @@ RUN pip3 install ansible
 # Install community.general
 RUN pip3 install docker \
     && ansible-galaxy collection install community.general
+
+ENV ANSIBLE_CONFIG=/workspaces/anisble_playbooks/ansible.cfg
     
 # Copy in Ansible.cfg
 # COPY ../ansible.cfg /etc/ansible/ansible.cfg
