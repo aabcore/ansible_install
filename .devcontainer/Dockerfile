@@ -43,8 +43,9 @@ RUN apt-get install sshpass
 RUN pip3 install ansible
 
 # Install community.general
-RUN pip3 install docker \
-    && ansible-galaxy collection install community.general
+RUN pip3 install docker pymongo \
+    && ansible-galaxy collection install community.general \
+    && ansible-galaxy collection install community.mongodb
 
 ENV ANSIBLE_CONFIG=/workspaces/anisble_playbooks/ansible.cfg
     

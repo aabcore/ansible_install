@@ -1,0 +1,24 @@
+[Unit]
+Description={{ item.value.shortName }} Container
+After=docker.service
+After={{nginx_proxy.shortName}}.service
+Requires=docker.service
+Requires=docker.{{nginx_proxy.shortName}}.service
+
+[Service]
+TimeoutStartSec=infinity
+Restart=always
+ExecStartPre=-/usr/bin/docker stop %n
+ExecStartPre=-/usr/bin/docker rm %n
+ExecStartPre=/usr/bin/docker pull {{ item.value.fullName}}:{{ item.value.tag }}
+ExecStart=/usr/bin/docker run --rm --name %n \
+    --network {{ dockerNetworkName }} \
+    --env "VIRTUAL_HOST={{ item.value.shortName }}.{{ baseHost }}" \
+    --env "LETSENCRYPT_HOST={{ item.value.shortName }}.{{ baseHost }}" \
+    --env "DatabaseSettings__ConnectionString=docker.{{mongo.shortName}}.service:27017" \
+    --env "DatabaseSettings__DatabaseUserName={{ item.value.dbUser }}" \
+    --env "DatabaseSettings__DatabasePassword={{ item.value.dbPass }}" \
+    {{ item.value.fullName}}:{{ item.value.tag }}
+
+[Install]
+WantedBy=multi-user.target

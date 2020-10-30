@@ -1,17 +1,21 @@
 ---
+dockerNetworkName: simulation_network
 applications:
-  - fullName: aabcore/bankerschoice.api
-    tag: 0.4.0
-    shortName: bankerschoice
-    port: 49494
-  - fullName: aabcore/mailcat.api
-    tag: 0.1.2
-    shortName: mailcat
-    port: 49495
-  - fullName: aabcore/personablepeople.api
-    tag: 0.1.0
-    shortName: personablepeople
-    port: 49496
+  bankerschoice: 
+      fullName: aabcore/bankerschoice.api
+      tag: 0.4.0
+      shortName: bankerschoice
+      databaseName: BankersChoiceDb
+  mailcat:
+      fullName: aabcore/mailcat.api
+      tag: 0.1.2
+      shortName: mailcat
+      databaseName: MailCatDb
+  personablepeople:
+      fullName: aabcore/personablepeople.api
+      tag: 0.1.0
+      shortName: personablepeople
+      databaseName: PersonablePeopleDb
 nginx_proxy:
   fullName: jwilder/nginx-proxy
   shortName: nginx-proxy
@@ -20,3 +24,11 @@ letsencrypt_nginx_proxy_companion:
   fullName: jrcs/letsencrypt-nginx-proxy-companion
   shortName: letsencrypt-nginx-proxy-companion
   tag: v1.13.1
+portainer:
+  fullName: portainer/portainer-ce
+  shortName: portainer
+  tag: 2.0.0
+mongo:
+  fullName: mongo
+  shortName: mongo
+  tag: 3.6-xenial

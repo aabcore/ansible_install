@@ -2,7 +2,7 @@
   {
     "hosts": "all",
     "become": true,
-    "vars_files": ["vars/containers.yml"],
+    "vars_files": ["vars/containers.yml", "vars/secret_vars.yml"],
     "tasks": [
         {
           "name": "Install aptitude using apt",
@@ -61,96 +61,186 @@
           "apt": "update_cache=yes name=docker-ce state=latest",
         },
         {
-          "name": "Install Docker Module for Python",
-          "pip": { "name": "docker" },
+          "name": "Install Python Modules",
+          "pip": { "name": "{{item}}" },
+          "loop": [
+            "docker",
+            "pymongo"
+          ]
         },
         {
           "name": "DockerEngine Managed by systemd",
           "systemd": { "name": "docker", "enabled": "yes", "state": "started" },
         },
         # Start Simulation Pre-reqs
-        # TODO Add nginx reverse proxy here
+        {
+          "name": "Build Bridge Docker Network",
+          "docker_network":
+            { "name": "{{ dockerNetworkName }}", "driver": "bridge" },
+        },
         {
           "name": "Pull nginx Reverse Proxy Docker images",
           "docker_image":
-            {
-              "name": "{{ item }}",
-              "source": "pull",
-              "state": "present",
-            },
+            { "name": "{{ item }}", "source": "pull", "state": "present" },
           "loop":
             [
-              "{{nginx_proxy.fullname}}:{{nginx_proxy.tag}}",
-              "{{letsencrypt_nginx_proxy_companion.fullname}}:{{letsencrypt_nginx_proxy_companion.tag}}",
+              "{{nginx_proxy.fullName}}:{{nginx_proxy.tag}}",
+              "{{letsencrypt_nginx_proxy_companion.fullName}}:{{letsencrypt_nginx_proxy_companion.tag}}",
             ],
         },
         {
-          "name": "Add nginx to systemd",
+          "name": "Add nginx-proxy to systemd",
           "template":
             {
-              "src": "./nginx_systemd_conf.j2",
+              "src": "./systemd_configs/nginx_proxy_systemd_conf.j2",
               "dest": "/etc/systemd/system/docker.{{nginx_proxy.shortName}}.service",
             },
-            "notify": "nginx config change"
+          "notify": "nginx-proxy config change",
         },
         {
           "name": "Add letsencrypt_nginx_proxy_companion to systemd",
           "template":
             {
-              "src": "./letsencrypt_companion_conf.j2",
+              "src": "./systemd_configs/letsencrypt_companion_conf.j2",
               "dest": "/etc/systemd/system/docker.{{letsencrypt_nginx_proxy_companion.shortName}}.service",
             },
-            "notify": "letsencrypt config change"
+          "notify": "letsencrypt config change",
         },
         {
-          "name": "Enabled nginx and letsencrypt by systemd",
+          "name": "Enabled nginx and nginx-proxy and letsencrypt by systemd",
           "systemd":
-            {
-              "name": "docker.{{item}}",
-              "enabled": "yes",
-              "state": "started",
-            },
+            { "name": "docker.{{item}}", "enabled": "yes", "state": "started" },
           "loop":
             [
               "{{nginx_proxy.shortName}}",
               "{{letsencrypt_nginx_proxy_companion.shortName}}",
             ],
-            "notify": [
-              "nginx config change", 
-              "letsencrypt config change"
-            ]
+          "notify":
+            [
+              "nginx-proxy config change",
+              "letsencrypt config change",
+            ],
+        },
+        # Start Monitoring Tools
+        {
+          "name": "Pull Portainer Docker images",
+          "docker_image":
+            {
+              "name": "{{ portainer.fullName }}:{{ portainer.tag }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "notify": "portainer config change",
+        },
+        {
+          "name": "Add Portainer to systemd",
+          "template":
+            {
+              "src": "./systemd_configs/portainer_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{ portainer.shortName }}.service",
+            },
+          "notify": "portainer config change",
+        },
+        {
+          "name": "Enable Portainer by systemd",
+          "systemd":
+            {
+              "name": "docker.{{ portainer.shortName }}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "notify": "portainer config change",
+        },
+        {
+          "name": "Install cockpit-project",
+          "apt":
+            {
+              "name": "cockpit",
+              "state": "latest",
+              "update_cache": "yes",
+              "cache_valid_time": 60,
+            },
+          "loop": ["cockpit", "cockpit-docker"],
+        },
+        # Start Mongo
+        {
+          "name": "Pull Mongo Docker images",
+          "docker_image":
+            {
+              "name": "{{ mongo.fullName }}:{{ mongo.tag }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "notify": "mongo config change",
+        },
+        {
+          "name": "Add Mongo to systemd",
+          "template":
+            {
+              "src": "./systemd_configs/mongo_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{ mongo.shortName }}.service",
+            },
+          "notify": "mongo config change",
+        },
+        {
+          "name": "Enable Mongo by systemd",
+          "systemd":
+            {
+              "name": "docker.{{ mongo.shortName }}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "notify": "mongo config change",
+        },
+        {
+          "name": "Add Application Users",
+          "community.mongodb.mongodb_user": {
+            "database": "admin",
+            "name": "{{item.value.dbUser}}",
+            "password": "{{item.value.dbPass}}",
+            "state": "present",
+            "roles": [
+              {"db": "admin", "role": "readWrite"},
+              {"db": "{{item.value.databaseName}}", "role": "readWrite"}
+            ],
+            "login_host": "{{mongo.shortName}}.{{baseHost}}",
+            "login_user": "{{mongoCreds.rootUser}}",
+            "login_password": "{{mongoCreds.rootPass}}",
+            "update_password": "always"
+          },
+          "loop": "{{ applications | combine(applicationCreds, recursive=True) | dict2items }}"
         },
         # Start Simulation Applications
         {
           "name": "Pull Application Docker images",
           "docker_image":
             {
-              "name": "{{ item.fullName }}",
-              "tag": "{{ item.tag }}",
+              "name": "{{ item.value.fullName }}",
+              "tag": "{{ item.value.tag }}",
               "source": "pull",
               "state": "present",
             },
-          "loop": "{{ applications }}",
+          "loop": "{{ applications | dict2items }}",
         },
         {
           "name": "Add App to systemd",
           "template":
             {
-              "src": "./application_systemd_conf.j2",
-              "dest": "/etc/systemd/system/docker.{{item.shortName}}.service",
+              "src": "./systemd_configs/application_systemd_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{item.value.shortName}}.service",
             },
-          "loop": "{{ applications }}",
+          "loop": "{{ applications | combine(applicationCreds, recursive=True) | dict2items }}",
           "notify": "systemd config change",
         },
         {
           "name": "Apps Enabled by systemd",
           "systemd":
             {
-              "name": "docker.{{item.shortName}}",
+              "name": "docker.{{item.value.shortName}}",
               "enabled": "yes",
               "state": "started",
             },
-          "loop": "{{ applications }}",
+          "loop": "{{ applications | dict2items }}",
         },
       ],
     "handlers":
@@ -159,16 +249,27 @@
           "name": "Restart Apps",
           "systemd":
             {
-              "name": "docker.{{item.shortName}}",
+              "name": "docker.{{item.value.shortName}}",
               "enabled": "yes",
               "state": "restarted",
               "daemon_reload": "yes",
             },
-          "loop": "{{ applications }}",
+          "loop": "{{ applications | dict2items }}",
           "listen": "systemd config change",
         },
         {
           "name": "Restart nginx",
+          "systemd":
+            {
+              "name": "docker.{{nginx.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "nginx config change",
+        },
+        {
+          "name": "Restart nginx-proxy",
           "systemd":
             {
               "name": "docker.{{nginx_proxy.shortName}}",
@@ -176,7 +277,29 @@
               "state": "restarted",
               "daemon_reload": "yes",
             },
-          "listen": "nginx config change",
+          "listen": "nginx-proxy config change",
+        },
+        {
+          "name": "Restart Portainer",
+          "systemd":
+            {
+              "name": "docker.{{portainer.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "portainer config change",
+        },
+        {
+          "name": "Restart Mongo",
+          "systemd":
+            {
+              "name": "docker.{{mongo.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "mongo config change",
         },
         {
           "name": "Restart Apps",
