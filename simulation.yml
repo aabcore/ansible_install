@@ -69,8 +69,57 @@
           "systemd": { "name": "docker", "enabled": "yes", "state": "started" },
         },
         # Start Simulation Pre-reqs
-          # TODO Add nginx reverse proxy here
-
+        # TODO Add nginx reverse proxy here
+        {
+          "name": "Pull nginx Reverse Proxy Docker images",
+          "docker_image":
+            {
+              "name": "{{ item }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "loop":
+            [
+              "{{nginx_proxy.fullname}}:{{nginx_proxy.tag}}",
+              "{{letsencrypt_nginx_proxy_companion.fullname}}:{{letsencrypt_nginx_proxy_companion.tag}}",
+            ],
+        },
+        {
+          "name": "Add nginx to systemd",
+          "template":
+            {
+              "src": "./nginx_systemd_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{nginx_proxy.shortName}}.service",
+            },
+            "notify": "nginx config change"
+        },
+        {
+          "name": "Add letsencrypt_nginx_proxy_companion to systemd",
+          "template":
+            {
+              "src": "./letsencrypt_companion_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{letsencrypt_nginx_proxy_companion.shortName}}.service",
+            },
+            "notify": "letsencrypt config change"
+        },
+        {
+          "name": "Enabled nginx and letsencrypt by systemd",
+          "systemd":
+            {
+              "name": "docker.{{item}}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "loop":
+            [
+              "{{nginx_proxy.shortName}}",
+              "{{letsencrypt_nginx_proxy_companion.shortName}}",
+            ],
+            "notify": [
+              "nginx config change", 
+              "letsencrypt config change"
+            ]
+        },
         # Start Simulation Applications
         {
           "name": "Pull Application Docker images",
@@ -117,6 +166,28 @@
             },
           "loop": "{{ applications }}",
           "listen": "systemd config change",
+        },
+        {
+          "name": "Restart nginx",
+          "systemd":
+            {
+              "name": "docker.{{nginx_proxy.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "nginx config change",
+        },
+        {
+          "name": "Restart Apps",
+          "systemd":
+            {
+              "name": "docker.{{letsencrypt_nginx_proxy_companion.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "letsencrypt config change",
         },
       ],
   },

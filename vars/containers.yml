@@ -12,5 +12,11 @@ applications:
     tag: 0.1.0
     shortName: personablepeople
     port: 49496
-nginx:
-  tag: 1.19
+nginx_proxy:
+  fullName: jwilder/nginx-proxy
+  shortName: nginx-proxy
+  tag: latest
+letsencrypt_nginx_proxy_companion:
+  fullName: jrcs/letsencrypt-nginx-proxy-companion
+  shortName: letsencrypt-nginx-proxy-companion
+  tag: v1.13.1

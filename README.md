@@ -6,4 +6,4 @@ You will need
 ### Command Line
 
 - Run playbook against servers in hosts file
-    - `ansible-playbook simulation.yml -i hosts --ask-pass`
+    - `ansible-playbook simulation.yml -i hosts --ask-pass -v`
