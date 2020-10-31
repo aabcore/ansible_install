@@ -63,7 +63,7 @@
         {
           "name": "Install Python Modules",
           "pip": { "name": "{{item}}" },
-          "loop": ["docker", "pymongo"],
+          "loop": ["docker", "pymongo", "psycopg2-binary"],
         },
         {
           "name": "DockerEngine Managed by systemd",
@@ -237,6 +237,86 @@
             },
           "loop": "{{ applications | dict2items }}",
         },
+        # Start Postgres
+        {
+          "name": "Pull Postgres Docker images",
+          "docker_image":
+            {
+              "name": "{{ postgres.fullName }}:{{ postgres.tag }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "notify": "postgres config change",
+        },
+        {
+          "name": "Add Postgres to systemd",
+          "template":
+            {
+              "src": "./systemd_configs/postgres_systemd_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{ postgres.shortName }}.service",
+            },
+          "notify": "postgres config change",
+        },
+        {
+          "name": "Enable Postgres by systemd",
+          "systemd":
+            {
+              "name": "docker.{{ postgres.shortName }}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "notify": "postgres config change",
+        },
+        {
+          "name": "Add Camunda database",
+          "community.general.postgresql_db": {
+            "login_host": "{{postgres.shortName}}.{{baseHost}}",
+            "login_user": "{{postgresCreds.rootUser}}",
+            "login_password": "{{postgresCreds.rootPass}}",
+            "name": "process-engine"
+          }
+        },
+        {
+          "name": "Add Camunda User to Postgres",
+          "community.general.postgresql_user": {
+            "login_host": "{{postgres.shortName}}.{{baseHost}}",
+            "login_user": "{{postgresCreds.rootUser}}",
+            "login_password": "{{postgresCreds.rootPass}}",
+            "name": "{{camundaCreds.dbUser}}",
+            "password": "{{camundaCreds.dbPass}}",
+            "expires": "infinity"
+          }
+        },
+        # Start Camunda
+        {
+          "name": "Pull Camunda Docker images",
+          "docker_image":
+            {
+              "name": "{{ camunda.fullName }}:{{ camunda.tag }}",
+              "source": "pull",
+              "state": "present",
+            },
+          "notify": "camunda config change",
+        },
+        {
+          "name": "Add Camunda to systemd",
+          "template":
+            {
+              "src": "./systemd_configs/camunda_systemd_conf.j2",
+              "dest": "/etc/systemd/system/docker.{{ camunda.shortName }}.service",
+            },
+          "notify": "camunda config change",
+        },
+        {
+          "name": "Enable Camunda by systemd",
+          "systemd":
+            {
+              "name": "docker.{{ camunda.shortName }}",
+              "enabled": "yes",
+              "state": "started",
+            },
+          "notify": "camunda config change",
+        },
       ],
     "handlers":
       [
@@ -253,15 +333,15 @@
           "listen": "systemd config change",
         },
         {
-          "name": "Restart nginx",
+          "name": "Restart postgres",
           "systemd":
             {
-              "name": "docker.{{nginx.shortName}}",
+              "name": "docker.{{postgres.shortName}}",
               "enabled": "yes",
               "state": "restarted",
               "daemon_reload": "yes",
             },
-          "listen": "nginx config change",
+          "listen": "postgres config change",
         },
         {
           "name": "Restart nginx-proxy",
@@ -295,6 +375,17 @@
               "daemon_reload": "yes",
             },
           "listen": "mongo config change",
+        },
+        {
+          "name": "Restart Camunda",
+          "systemd":
+            {
+              "name": "docker.{{camunda.shortName}}",
+              "enabled": "yes",
+              "state": "restarted",
+              "daemon_reload": "yes",
+            },
+          "listen": "camunda config change",
         },
         {
           "name": "Restart Apps",

@@ -1,0 +1,26 @@
+[Unit]
+Description={{ camunda.shortName }} Container
+After=docker.service
+Requires=docker.service
+After={{nginx_proxy.shortName}}.service
+Requires=docker.{{nginx_proxy.shortName}}.service
+
+[Service]
+TimeoutStartSec=infinity
+Restart=always
+ExecStartPre=-/usr/bin/docker stop %n
+ExecStartPre=-/usr/bin/docker rm %n
+ExecStartPre=/usr/bin/docker pull {{ camunda.fullName}}:{{ camunda.tag }}
+ExecStart=/usr/bin/docker run --rm --name %n \
+    --network {{ dockerNetworkName }} \
+    --env "VIRTUAL_HOST={{ camunda.shortName }}.{{ baseHost }}" \
+    --env "LETSENCRYPT_HOST={{ camunda.shortName }}.{{ baseHost }}" \
+    --env "VIRTUAL_PORT=8080" \
+    -e "DB_DRIVER=org.postgresql.Driver" \
+    -e "DB_URL=jdbc:postgresql://docker.{{postgres.shortName}}.service:5432/process-engine" \
+    -e "DB_USERNAME={{camundaCreds.dbUser}}" \
+    -e "DB_PASSWORD={{camundaCreds.dbPass}}" \
+    {{ camunda.fullName}}:{{ camunda.tag }}
+
+[Install]
+WantedBy=multi-user.target

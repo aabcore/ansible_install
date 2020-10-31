@@ -7,3 +7,5 @@ You will need
 
 - Run playbook against servers in hosts file
     - `ansible-playbook simulation.yml -i hosts --ask-pass --ask-vault-pass -v`
+- Edit the secret_vars.yml file
+    - `EDITOR=nano ansible-vault edit ./vars/secret_vars.yml`

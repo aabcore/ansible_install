@@ -3,17 +3,17 @@ dockerNetworkName: simulation_network
 applications:
   bankerschoice: 
       fullName: aabcore/bankerschoice.api
-      tag: 0.4.0
+      tag: "0.4.0"
       shortName: bankerschoice
       databaseName: BankersChoiceDb
   mailcat:
       fullName: aabcore/mailcat.api
-      tag: 0.1.2
+      tag: "0.1.2"
       shortName: mailcat
       databaseName: MailCatDb
   personablepeople:
       fullName: aabcore/personablepeople.api
-      tag: 0.1.0
+      tag: "0.1.0"
       shortName: personablepeople
       databaseName: PersonablePeopleDb
 nginx_proxy:
@@ -27,8 +27,17 @@ letsencrypt_nginx_proxy_companion:
 portainer:
   fullName: portainer/portainer-ce
   shortName: portainer
-  tag: 2.0.0
+  tag: "2.0.0"
 mongo:
   fullName: mongo
   shortName: mongo
   tag: 3.6-xenial
+postgres:
+  fullName: postgres
+  shortName: postgres
+  tag: 13-alpine
+camunda:
+  fullName: camunda/camunda-bpm-platform
+  shortName: camunda
+  tag: run-7.14.0
+  
