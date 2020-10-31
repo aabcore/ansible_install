@@ -63,10 +63,7 @@
         {
           "name": "Install Python Modules",
           "pip": { "name": "{{item}}" },
-          "loop": [
-            "docker",
-            "pymongo"
-          ]
+          "loop": ["docker", "pymongo"],
         },
         {
           "name": "DockerEngine Managed by systemd",
@@ -115,11 +112,7 @@
               "{{nginx_proxy.shortName}}",
               "{{letsencrypt_nginx_proxy_companion.shortName}}",
             ],
-          "notify":
-            [
-              "nginx-proxy config change",
-              "letsencrypt config change",
-            ],
+          "notify": ["nginx-proxy config change", "letsencrypt config change"],
         },
         # Start Monitoring Tools
         {
@@ -194,21 +187,23 @@
         },
         {
           "name": "Add Application Users",
-          "community.mongodb.mongodb_user": {
-            "database": "admin",
-            "name": "{{item.value.dbUser}}",
-            "password": "{{item.value.dbPass}}",
-            "state": "present",
-            "roles": [
-              {"db": "admin", "role": "readWrite"},
-              {"db": "{{item.value.databaseName}}", "role": "readWrite"}
-            ],
-            "login_host": "{{mongo.shortName}}.{{baseHost}}",
-            "login_user": "{{mongoCreds.rootUser}}",
-            "login_password": "{{mongoCreds.rootPass}}",
-            "update_password": "always"
-          },
-          "loop": "{{ applications | combine(applicationCreds, recursive=True) | dict2items }}"
+          "community.mongodb.mongodb_user":
+            {
+              "database": "admin",
+              "name": "{{item.value.dbUser}}",
+              "password": "{{item.value.dbPass}}",
+              "state": "present",
+              "roles":
+                [
+                  { "db": "admin", "role": "readWrite" },
+                  { "db": "{{item.value.databaseName}}", "role": "readWrite" },
+                ],
+              "login_host": "{{mongo.shortName}}.{{baseHost}}",
+              "login_user": "{{mongoCreds.rootUser}}",
+              "login_password": "{{mongoCreds.rootPass}}",
+              "update_password": "always",
+            },
+          "loop": "{{ applications | combine(applicationCreds, recursive=True) | dict2items }}",
         },
         # Start Simulation Applications
         {
